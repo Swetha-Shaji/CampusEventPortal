@@ -1,0 +1,96 @@
+
+
+services:
+  # 1. PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: campus_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root}
+      POSTGRES_DB: ${POSTGRES_DB:-campusevents}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    # --- ADD THIS HEALTHCHECK ---
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-campusevents}"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  # 2. Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: campus_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # 6. Adminer (Database GUI)
+  adminer:
+    image: adminer
+    container_name: campus_adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db    
+
+  # 3. FastAPI Backend
+  backend:
+    build: 
+      context: ./backend
+    container_name: campus_backend
+    restart: always
+    volumes:
+      - ./backend:/app
+      - banners_data:/app/static/banners
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-campusevents}
+      - REDIS_URL=redis://redis:6379/0
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USERNAME=${EMAIL_USERNAME}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+    # --- UPDATE DEPENDS_ON ---
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+  # 4. React (Vite) Frontend
+  frontend:
+    build:
+      context: ./frontend
+    container_name: campus_frontend
+    restart: always
+    volumes:
+      - ./frontend:/app               # Live reload: syncs your local React code
+      - /app/node_modules             # Prevents overwriting container node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - CHOKIDAR_USEPOLLING=true      # Ensures Vite hot-reload works in Docker
+    depends_on:
+      - backend
+
+  # 5. Nginx Reverse Proxy
+  proxy:
+    image: nginx:alpine
+    container_name: campus_proxy
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"                       # Main entry point for the whole app
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  postgres_data:
+  banners_data:

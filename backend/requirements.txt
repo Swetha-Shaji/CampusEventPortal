@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+python-dotenv
+pyjwt
+passlib[bcrypt]
+email-validator
+python-multipart
+redis
+fastapi-cache2[redis]
+fastapi-limiter==0.1.6
+jinja2
+bcrypt==3.2.2
