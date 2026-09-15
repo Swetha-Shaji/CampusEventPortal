@@ -100,7 +100,7 @@ SECRET_KEY=your_super_secret_jwt_key
 
 ---
 
-## 🚀 Quick Start (How to Run Locally)
+## Quick Start (How to Run Locally)
 
 Follow these steps to run the application on your local machine using Docker:
 
