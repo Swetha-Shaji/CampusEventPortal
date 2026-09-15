@@ -29,6 +29,8 @@ from email.mime.multipart import MIMEMultipart
 from fastapi import Request
 from fastapi.responses import JSONResponse
 import traceback
+from PIL import Image
+from io import BytesIO
 
 # =========================================================
 # DATABASE
@@ -123,6 +125,14 @@ async def send_otp(request: schemas.SendOTPRequest, db: Session = Depends(get_db
     existing_user = db.query(models.User).filter(models.User.email == clean_email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
+        
+    # Rate-limit: Check if an OTP was generated in the last 60 seconds
+    ttl = await redis_client.ttl(f"otp:{clean_email}")
+    if ttl > 240:
+        raise HTTPException(
+            status_code=429, 
+            detail="Please wait 60 seconds before requesting a new OTP."
+        )
         
     otp = str(random.randint(100000, 999999))
     await redis_client.setex(f"otp:{clean_email}", 300, otp)
@@ -506,12 +516,22 @@ async def create_event(
 
     db_banner_url = None
     if banner:
-        file_extension = banner.filename.split(".")[-1]
-        unique_filename = f"{datetime.now().timestamp()}_{current_user.id}.{file_extension}"
-        file_location = f"static/banners/{unique_filename}"
-        with open(file_location, "wb+") as file_object:
-            shutil.copyfileobj(banner.file, file_object)
-        db_banner_url = f"/static/banners/{unique_filename}"
+        try:
+            image_data = await banner.read()
+            img = Image.open(BytesIO(image_data))
+            
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+                
+            img.thumbnail((1920, 1080), Image.Resampling.LANCZOS)
+            
+            unique_filename = f"{datetime.now().timestamp()}_{current_user.id}.webp"
+            file_location = f"static/banners/{unique_filename}"
+            
+            img.save(file_location, "WEBP", quality=80)
+            db_banner_url = f"/static/banners/{unique_filename}"
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Invalid image file format")
 
     new_event = models.Event(
         title=title,
@@ -631,14 +651,22 @@ async def update_event(
         if location_link is not None: event.location_link = location_link
 
     if banner:
-        file_extension = banner.filename.split(".")[-1]
-        unique_filename = f"{datetime.now().timestamp()}_{current_user.id}.{file_extension}"
-        file_location = f"static/banners/{unique_filename}"
-
-        with open(file_location, "wb+") as file_object:
-            shutil.copyfileobj(banner.file, file_object)
+        try:
+            image_data = await banner.read()
+            img = Image.open(BytesIO(image_data))
             
-        event.banner_url = f"/static/banners/{unique_filename}"
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+                
+            img.thumbnail((1920, 1080), Image.Resampling.LANCZOS)
+            
+            unique_filename = f"{datetime.now().timestamp()}_{current_user.id}.webp"
+            file_location = f"static/banners/{unique_filename}"
+            
+            img.save(file_location, "WEBP", quality=80)
+            event.banner_url = f"/static/banners/{unique_filename}"
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Invalid image file format")
 
     db.commit()
     db.refresh(event)
@@ -711,15 +739,19 @@ def register_for_event(
         if not reg_data or not reg_data.team_leader or reg_data.team_members is None:
             raise HTTPException(status_code=400, detail="Team leader and member names are required for team events")
         
-        total_members_count = 1 + len(reg_data.team_members)
+        team_leader = reg_data.team_leader.strip()
+        
+        # Filter out empty strings to get the actual valid members list
+        valid_members = [m.strip() for m in reg_data.team_members if m.strip()]
+        
+        total_members_count = 1 + len(valid_members)
         if total_members_count < event.min_team_size or total_members_count > event.max_team_size:
             raise HTTPException(
                 status_code=400, 
                 detail=f"Team size must be between {event.min_team_size} and {event.max_team_size} members."
             )
         
-        team_leader = reg_data.team_leader.strip()
-        team_members_str = ",".join([m.strip() for m in reg_data.team_members if m.strip()])
+        team_members_str = ",".join(valid_members)
 
     if existing_reg:
         # If they previously cancelled, re-activate and update their registration status

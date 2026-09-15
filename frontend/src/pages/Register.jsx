@@ -1,6 +1,6 @@
 // src/pages/Register.jsx
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 
 export default function Register() {
@@ -17,6 +17,19 @@ export default function Register() {
   const [serverError, setServerError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [timer, setTimer] = useState(0);
+
+  useEffect(() => {
+    let interval = null;
+    if (timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (interval) {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [timer]);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -54,10 +67,29 @@ export default function Register() {
         name: formData.name,
         email: formData.email
       });
-      setSuccessMessage('OTP sent to your email! Check your console/inbox.');
+      setSuccessMessage('OTP sent to your email! Check your inbox (or spam).');
       setStep('otp');
+      setTimer(60);
     } catch (err) {
       setServerError(err.response?.data?.detail || 'Failed to send OTP.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setServerError('');
+    setSuccessMessage('');
+    setIsSubmitting(true);
+    try {
+      await axios.post('/api/auth/send-otp', {
+        name: formData.name,
+        email: formData.email
+      });
+      setSuccessMessage('A new OTP has been sent to your email.');
+      setTimer(60);
+    } catch (err) {
+      setServerError(err.response?.data?.detail || 'Failed to resend OTP.');
     } finally {
       setIsSubmitting(false);
     }
@@ -161,7 +193,7 @@ export default function Register() {
             <header className="text-center mb-10">
               <div className="inline-block mb-4">
                 <span className="px-4 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-sm font-bold tracking-widest text-blue-400 uppercase">
-                  Campus Events
+                  Spotlight
                 </span>
               </div>
               <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-2 mt-4" style={{ fontFamily: "'Manrope', sans-serif" }}>
@@ -254,6 +286,17 @@ export default function Register() {
                     type="submit"
                   >
                     {isSubmitting ? 'Verifying...' : 'Verify OTP'}
+                  </button>
+                </div>
+
+                <div className="text-center mt-2">
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={timer > 0 || isSubmitting}
+                    className="text-sm font-bold text-blue-400 hover:text-blue-300 disabled:text-[#8c909f] transition-colors"
+                  >
+                    {timer > 0 ? `Resend OTP in ${timer}s` : 'Resend OTP'}
                   </button>
                 </div>
               </form>
