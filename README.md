@@ -95,3 +95,36 @@ EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=465
 EMAIL_USERNAME=your_email@gmail.com
 EMAIL_PASSWORD=your_smtp_app_password
+SECRET_KEY=your_super_secret_jwt_key
+```
+
+---
+
+## 🚀 Quick Start (How to Run Locally)
+
+Follow these steps to run the application on your local machine using Docker:
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Swetha-Shaji/CampusEventPortal.git
+   cd CampusEventPortal
+   ```
+
+2. **Set up Environment Variables:**
+   * Create a file named `.env` in the root of the project.
+   * Copy the template provided in the **Environment Variables** section above into your new `.env` file.
+
+3. **Build and start the containers:**
+   ```bash
+   docker-compose up -d --build
+   ```
+
+4. **Access the Application:**
+   * **Frontend Application:** [http://localhost:5173](http://localhost:5173) (or `http://localhost` if using the Nginx proxy)
+   * **Backend API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
+   * **Adminer (Database UI):** [http://localhost:8080](http://localhost:8080)
+
+To stop the application, run:
+```bash
+docker-compose down
+```
