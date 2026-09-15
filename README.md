@@ -45,7 +45,6 @@ The application is containerized and runs inside a localized Docker Compose netw
 
 ## REST API Design
 
-Below is a summary of the core API endpoints implemented in the backend:
 
 ### Authentication & Users
 * `POST /auth/send-otp` - Generates and emails a 6-digit verification code.
