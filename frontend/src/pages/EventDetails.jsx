@@ -652,17 +652,19 @@ export default function EventDetails() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                    <button onClick={openEditModal} className="py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold rounded-2xl transition-all flex justify-center items-center gap-2 shadow-lg cursor-pointer">
-                      <span className="material-symbols-outlined">edit</span> Edit Event
-                    </button>
-                    <button onClick={() => { setIsBroadcastModalOpen(true); setBroadcastStatus({ type: "", text: "" }); setBroadcastText(""); fetchPreviousBroadcasts(event.id); }} className="py-4 bg-orange-600/20 hover:bg-orange-600 border border-orange-500/30 text-orange-400 hover:text-white font-bold rounded-2xl transition-all flex justify-center items-center gap-2 shadow-lg hover:shadow-[0_0_20px_rgba(249,115,22,0.4)] cursor-pointer">
-                      <span className="material-symbols-outlined">campaign</span> Send Broadcast
-                    </button>
-                    <button onClick={() => setIsDeleteModalOpen(true)} className="py-4 bg-red-600/20 hover:bg-red-600 border border-red-500/30 text-red-400 hover:text-white font-bold rounded-2xl transition-all flex justify-center items-center gap-2 shadow-lg hover:shadow-[0_0_20px_rgba(220,38,38,0.4)] cursor-pointer">
-                      <span className="material-symbols-outlined">cancel</span> Cancel Event
-                    </button>
-                  </div>
+                  {!(event.status === 'cancelled' || event.status === 'completed') && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
+                      <button onClick={openEditModal} className="py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold rounded-2xl transition-all flex justify-center items-center gap-2 shadow-lg cursor-pointer">
+                        <span className="material-symbols-outlined">edit</span> Edit Event
+                      </button>
+                      <button onClick={() => { setIsBroadcastModalOpen(true); setBroadcastStatus({ type: "", text: "" }); setBroadcastText(""); fetchPreviousBroadcasts(event.id); }} className="py-4 bg-orange-600/20 hover:bg-orange-600 border border-orange-500/30 text-orange-400 hover:text-white font-bold rounded-2xl transition-all flex justify-center items-center gap-2 shadow-lg hover:shadow-[0_0_20px_rgba(249,115,22,0.4)] cursor-pointer">
+                        <span className="material-symbols-outlined">campaign</span> Send Broadcast
+                      </button>
+                      <button onClick={() => setIsDeleteModalOpen(true)} className="py-4 bg-red-600/20 hover:bg-red-600 border border-red-500/30 text-red-400 hover:text-white font-bold rounded-2xl transition-all flex justify-center items-center gap-2 shadow-lg hover:shadow-[0_0_20px_rgba(220,38,38,0.4)] cursor-pointer">
+                        <span className="material-symbols-outlined">cancel</span> Cancel Event
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -699,6 +701,8 @@ export default function EventDetails() {
                             </div>
                             <p className="text-sm text-white">{c.admin_reply || c.adminReply}</p>
                           </div>
+                        ) : (event.status === 'cancelled' || event.status === 'completed') ? (
+                          <div className="text-xs text-[#8c909f] ml-6 pt-2 italic">Replies are disabled for this event.</div>
                         ) : (
                           <div className="flex gap-2 pt-2 ml-6">
                             <input 

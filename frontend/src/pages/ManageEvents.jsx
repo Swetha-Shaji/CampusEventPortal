@@ -429,8 +429,18 @@ export default function ManageEvents() {
     const now = new Date();
 
     if (scheduledDateTime <= now) {
-      alert("Scheduled date and time cannot be in the past or current time.");
-      return;
+      setIsScheduleModalOpen(false);
+      return setFormError("Scheduled date and time cannot be in the past or current time.");
+    }
+
+    // Validate that schedule date is at least 24 hours before registration deadline
+    if (formData.registration_deadline) {
+      const deadlineDateTime = new Date(formData.registration_deadline);
+      const oneDayInMs = 24 * 60 * 60 * 1000;
+      if (deadlineDateTime.getTime() - scheduledDateTime.getTime() < oneDayInMs) {
+        setIsScheduleModalOpen(false);
+        return setFormError("Scheduled publish date must be at least 24 hours before the registration deadline.");
+      }
     }
     
     const validationError = checkCommonValidations("scheduled");
@@ -581,6 +591,24 @@ export default function ManageEvents() {
       return matchesSearch && matchesLocationType && matchesCategory && matchesStatus;
     })
     .sort((a, b) => {
+      const getStatusRank = (status) => {
+        switch (status) {
+          case 'active': return 1;
+          case 'scheduled': return 2;
+          case 'draft': return 3;
+          case 'cancelled': return 4;
+          case 'completed': return 5;
+          default: return 6;
+        }
+      };
+      
+      const rankA = getStatusRank(a.status);
+      const rankB = getStatusRank(b.status);
+      
+      if (rankA !== rankB) {
+        return rankA - rankB;
+      }
+
       if (eventSortBy === "date_nearest") {
         return new Date(a.date_from || 0) - new Date(b.date_from || 0);
       } else if (eventSortBy === "date_furthest") {
@@ -848,6 +876,7 @@ export default function ManageEvents() {
                     <option value="scheduled">Scheduled</option>
                     <option value="draft">Draft</option>
                     <option value="cancelled">Cancelled</option>
+                    <option value="completed">Completed</option>
                   </select>
                 </div>
 
@@ -884,6 +913,7 @@ export default function ManageEvents() {
                       const isDraft = event.status === 'draft';
                       const isScheduled = event.status === 'scheduled';
                       const isCancelled = event.status === 'cancelled';
+                      const isCompleted = event.status === 'completed';
                       
                       const cardContent = (
                         <div className="relative rounded-2xl overflow-hidden group cursor-pointer aspect-[2/3] shadow-lg border border-white/10 hover:border-red-500/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(220,38,38,0.25)] bg-[#050810]">
@@ -911,8 +941,14 @@ export default function ManageEvents() {
                             </div>
                           )}
 
+                          {isCompleted && (
+                            <div className="absolute top-3 right-3 z-20 bg-gray-700 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase shadow-md">
+                              Completed
+                            </div>
+                          )}
+
                           {event.banner_url ? (
-                            <img src={`${API_URL}${event.banner_url}`} alt={event.title} className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700" />
+                            <img src={`${API_URL}${event.banner_url}`} alt={event.title} className={`w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ${isCancelled || isCompleted ? 'grayscale opacity-60' : ''}`} />
                           ) : (
                             <div className="flex items-center justify-center w-full h-full text-[#8c909f] p-4 text-center">{event.title} <br/>(No Image)</div>
                           )}

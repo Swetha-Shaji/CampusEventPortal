@@ -533,6 +533,11 @@ async def create_event(
         except Exception as e:
             raise HTTPException(status_code=400, detail="Invalid image file format")
 
+    actual_event_format = event_format or models.EventFormatEnum.individual
+    if actual_event_format == models.EventFormatEnum.individual:
+        min_team_size = None
+        max_team_size = None
+
     new_event = models.Event(
         title=title,
         description=description,
@@ -546,7 +551,7 @@ async def create_event(
         meet_url=meet_url, 
         contact=contact,
         organization_name=organization_name,
-        event_format=event_format or models.EventFormatEnum.individual,          
+        event_format=actual_event_format,          
         min_team_size=min_team_size,        
         max_team_size=max_team_size,
         banner_url=db_banner_url,
@@ -582,6 +587,18 @@ def get_events(
             
             if now >= sched_date:
                 ev.status = "active"
+                updated = True
+
+    # Auto-completion check for active events
+    active_events = db.query(models.Event).filter(models.Event.status == "active").all()
+    for ev in active_events:
+        if ev.date_to:
+            end_date = ev.date_to
+            if end_date.tzinfo is not None:
+                end_date = end_date.astimezone(timezone.utc).replace(tzinfo=None)
+            
+            if now > end_date:
+                ev.status = "completed"
                 updated = True
 
     if updated:

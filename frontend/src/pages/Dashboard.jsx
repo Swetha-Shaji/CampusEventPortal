@@ -29,14 +29,14 @@ export default function Dashboard() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [sortBy, setSortBy] = useState("upcoming_first");
 
-  // -----------------------------
-  // Pagination States
-  // -----------------------------
+  // Pagination & Hover States
   const [currentRegisteredPage, setCurrentRegisteredPage] = useState(1);
-  const [registeredItemsPerPage] = useState(4); // Display 4 registered events per page
+  const registeredItemsPerPage = 4;
+  const [hoveredRegEventId, setHoveredRegEventId] = useState(null);
 
   const [currentDiscoverPage, setCurrentDiscoverPage] = useState(1);
-  const [discoverItemsPerPage] = useState(4); // Display 4 discover events per page
+  const discoverItemsPerPage = 4;
+  const [hoveredDiscEventId, setHoveredDiscEventId] = useState(null);
 
   const [showProfile, setShowProfile] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -394,7 +394,7 @@ export default function Dashboard() {
       return b.id - a.id;
     });
 
-  // Pagination for Registered Events
+  // Pagination bounds for Registered Events
   const totalRegisteredPages = Math.ceil(filteredAndSortedRegisteredEvents.length / registeredItemsPerPage);
   const indexLastRegEvent = currentRegisteredPage * registeredItemsPerPage;
   const indexFirstRegEvent = indexLastRegEvent - registeredItemsPerPage;
@@ -443,7 +443,7 @@ export default function Dashboard() {
       return b.id - a.id;
     });
 
-  // Pagination for Discover Events
+  // Pagination bounds for Discover Events
   const totalDiscoverPages = Math.ceil(filteredAndSortedDiscoverEvents.length / discoverItemsPerPage);
   const indexLastDiscEvent = currentDiscoverPage * discoverItemsPerPage;
   const indexFirstDiscEvent = indexLastDiscEvent - discoverItemsPerPage;
@@ -577,7 +577,7 @@ export default function Dashboard() {
           </div>
         </nav>
 
-        <main className="relative z-10 max-w-7xl mx-auto px-6 py-12 space-y-12">
+        <main className="relative z-10 max-w-7xl mx-auto px-6 py-12 space-y-16">
           
           {/* ==================================================== */}
           {/* REGISTERED EVENTS SECTION */}
@@ -631,103 +631,112 @@ export default function Dashboard() {
                   <p className="text-sm text-[#8c909f]">No registered events match your search or filter criteria.</p>
                 </div>
               ) : (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 items-start">
-                    {currentRegisteredEvents.map((event) => {
-                      const unreadReplies = unreadCounts[event.id] || 0;
-                      const ended = isEventEnded(event);
-                      const isCancelled = event.status === 'cancelled';
-                      const daysAlert = !ended && !isCancelled ? getDaysLeftAlert(event.date_from, event.date_to) : null;
+                <div className="flex flex-col gap-2">
+                  <div className="relative flex items-center w-full">
+                    {/* Left Arrow Button */}
+                    {totalRegisteredPages > 1 && (
+                      <button
+                        onClick={() => setCurrentRegisteredPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentRegisteredPage === 1}
+                        className="absolute -left-6 sm:-left-12 z-30 text-white/40 hover:text-white transition-all duration-300 disabled:opacity-10 disabled:cursor-not-allowed cursor-pointer bg-transparent outline-none border-none flex items-center justify-center"
+                        title="Previous Events"
+                      >
+                        <span className="material-symbols-outlined text-4xl sm:text-6xl drop-shadow-xl">chevron_left</span>
+                      </button>
+                    )}
 
-                      return (
-                        <Link key={event.id} to={`/my-events/${event.id}`} className={`relative rounded-2xl overflow-hidden group cursor-pointer aspect-[2/3] shadow-lg border transition-all duration-300 hover:-translate-y-2 bg-[#050810] ${isCancelled ? 'border-red-500/50' : ended ? 'border-gray-500/30 hover:border-gray-400' : 'border-green-500/30 hover:border-green-500'}`}>
-                          
-                          {!ended && !isCancelled && unreadReplies > 0 && (
-                            <div className="absolute top-3 left-3 z-20 bg-red-600 text-white text-xs font-extrabold w-6 h-6 rounded-full flex items-center justify-center shadow-lg border border-white/25" title="New reply from coordinator">
-                              {unreadReplies}
-                            </div>
-                          )}
+                    {/* Registered Events Grid Container */}
+                    <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 items-start">
+                      {currentRegisteredEvents.map((event) => {
+                        const unreadReplies = unreadCounts[event.id] || 0;
+                        const ended = isEventEnded(event);
+                        const isCancelled = event.status === 'cancelled';
+                        const daysAlert = !ended && !isCancelled ? getDaysLeftAlert(event.date_from, event.date_to) : null;
 
-                          {event.banner_url ? (
-                            <img src={`${API_URL}${event.banner_url}`} alt={event.title} className={`w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ${ended || isCancelled ? 'grayscale opacity-60' : ''}`} />
-                          ) : (
-                            <div className="flex items-center justify-center w-full h-full text-[#8c909f] p-4 text-center">{event.title}</div>
-                          )}
-
-                          <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5 z-20">
-                            {isCancelled ? (
-                              <div className="bg-red-600/90 backdrop-blur-md px-3 py-1 text-xs font-bold rounded-full text-white shadow-lg border border-red-400/30 flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[14px]">cancel</span> Event Cancelled
+                        return (
+                          <Link 
+                            key={event.id} 
+                            to={`/my-events/${event.id}`} 
+                            onMouseEnter={() => setHoveredRegEventId(event.id)}
+                            onMouseLeave={() => setHoveredRegEventId(null)}
+                            className={`relative rounded-2xl overflow-hidden group cursor-pointer aspect-[2/3] shadow-lg border transition-all duration-300 hover:-translate-y-2 bg-[#050810] ${isCancelled ? 'border-red-500/50' : ended ? 'border-gray-500/30 hover:border-gray-400' : 'border-green-500/30 hover:border-green-500'}`}
+                          >
+                            {!ended && !isCancelled && unreadReplies > 0 && (
+                              <div className="absolute top-3 left-3 z-20 bg-red-600 text-white text-xs font-extrabold w-6 h-6 rounded-full flex items-center justify-center shadow-lg border border-white/25" title="New reply from coordinator">
+                                {unreadReplies}
                               </div>
-                            ) : ended ? (
-                              <div className="bg-gray-700/90 backdrop-blur-md px-3 py-1 text-xs font-bold rounded-full text-gray-300 shadow-lg border border-gray-500/30 flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[14px]">event_busy</span> Event Ended
-                              </div>
-                            ) : (
-                              <>
-                                <div className="bg-green-600/90 backdrop-blur-md px-3 py-1 text-xs font-bold rounded-full text-white shadow-lg border border-green-400/30 flex items-center gap-1">
-                                  <span className="material-symbols-outlined text-[14px]">check_circle</span> Registered
-                                </div>
-                                {daysAlert && (
-                                  <div className="bg-emerald-950/90 backdrop-blur-md px-3 py-1 text-xs font-bold rounded-full text-emerald-400 shadow-lg border border-emerald-600/40">
-                                    {daysAlert}
-                                  </div>
-                                )}
-                              </>
                             )}
-                          </div>
 
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                            <p className="text-white font-bold truncate w-full text-lg mb-1">{event.title}</p>
-                            <span className={`text-xs font-semibold ${isCancelled ? 'text-red-400' : ended ? 'text-gray-400' : 'text-green-400'}`}>Open Discussion Hub →</span>
-                          </div>
-                        </Link>
-                      );
-                    })}
+                            {event.banner_url ? (
+                              <img src={`${API_URL}${event.banner_url}`} alt={event.title} className={`w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ${ended || isCancelled ? 'grayscale opacity-60' : ''}`} />
+                            ) : (
+                              <div className="flex items-center justify-center w-full h-full text-[#8c909f] p-4 text-center">{event.title}</div>
+                            )}
+
+                            <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5 z-20">
+                              {isCancelled ? (
+                                <div className="bg-red-600/90 backdrop-blur-md px-3 py-1 text-xs font-bold rounded-full text-white shadow-lg border border-red-400/30 flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[14px]">cancel</span> Event Cancelled
+                                </div>
+                              ) : ended ? (
+                                <div className="bg-gray-700/90 backdrop-blur-md px-3 py-1 text-xs font-bold rounded-full text-gray-300 shadow-lg border border-gray-500/30 flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[14px]">event_busy</span> Event Ended
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="bg-green-600/90 backdrop-blur-md px-3 py-1 text-xs font-bold rounded-full text-white shadow-lg border border-green-400/30 flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[14px]">check_circle</span> Registered
+                                  </div>
+                                  {daysAlert && (
+                                    <div className="bg-emerald-950/90 backdrop-blur-md px-3 py-1 text-xs font-bold rounded-full text-emerald-400 shadow-lg border border-emerald-600/40">
+                                      {daysAlert}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                              <p className="text-white font-bold truncate w-full text-lg mb-1">{event.title}</p>
+                              <span className={`text-xs font-semibold ${isCancelled ? 'text-red-400' : ended ? 'text-gray-400' : 'text-green-400'}`}>Open Discussion Hub →</span>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+
+                    {/* Right Arrow Button */}
+                    {totalRegisteredPages > 1 && (
+                      <button
+                        onClick={() => setCurrentRegisteredPage(prev => Math.min(prev + 1, totalRegisteredPages))}
+                        disabled={currentRegisteredPage === totalRegisteredPages}
+                        className="absolute -right-6 sm:-right-12 z-30 text-white/40 hover:text-white transition-all duration-300 disabled:opacity-10 disabled:cursor-not-allowed cursor-pointer bg-transparent outline-none border-none flex items-center justify-center"
+                        title="Next Events"
+                      >
+                        <span className="material-symbols-outlined text-4xl sm:text-6xl drop-shadow-xl">chevron_right</span>
+                      </button>
+                    )}
                   </div>
-                  
-                  {/* Registered Events Pagination */}
-                  {totalRegisteredPages > 1 && (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 bg-white/5 px-6 py-4 rounded-2xl border border-white/10">
-                      <p className="text-xs text-[#8c909f]">
-                        Showing <span className="font-bold text-white">{indexFirstRegEvent + 1}</span> to <span className="font-bold text-white">{Math.min(indexLastRegEvent, filteredAndSortedRegisteredEvents.length)}</span> of <span className="font-bold text-white">{filteredAndSortedRegisteredEvents.length}</span> events
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => setCurrentRegisteredPage(prev => Math.max(prev - 1, 1))}
-                          disabled={currentRegisteredPage === 1}
-                          className="p-2 rounded-xl bg-[#1e293b] border border-white/10 text-white hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-                        </button>
-                        
-                        <div className="flex gap-1 overflow-x-auto max-w-[200px] sm:max-w-none no-scrollbar">
-                          {Array.from({ length: totalRegisteredPages }, (_, i) => i + 1).map((page) => (
-                            <button
-                              key={page}
-                              onClick={() => setCurrentRegisteredPage(page)}
-                              className={`min-w-[32px] h-8 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                                currentRegisteredPage === page 
-                                  ? 'bg-blue-600 text-white border border-blue-500 shadow-[0_0_10px_rgba(37,99,235,0.4)]' 
-                                  : 'bg-transparent text-[#8c909f] hover:text-white hover:bg-white/10 border border-transparent'
-                              }`}
-                            >
-                              {page}
-                            </button>
-                          ))}
-                        </div>
 
-                        <button 
-                          onClick={() => setCurrentRegisteredPage(prev => Math.min(prev + 1, totalRegisteredPages))}
-                          disabled={currentRegisteredPage === totalRegisteredPages}
-                          className="p-2 rounded-xl bg-[#1e293b] border border-white/10 text-white hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                        </button>
-                      </div>
+                  {/* Registered Events Pagination Dots (Only for Current Set) */}
+                  {currentRegisteredEvents.length > 0 && (
+                    <div className="flex justify-center items-center gap-2 mt-6 flex-wrap px-4">
+                      {currentRegisteredEvents.map((event) => {
+                        const isHovered = hoveredRegEventId === event.id;
+                        return (
+                          <div
+                            key={event.id}
+                            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                              isHovered 
+                                ? "bg-white scale-125" 
+                                : "bg-gray-500"
+                            }`}
+                          />
+                        );
+                      })}
                     </div>
                   )}
-                </>
+                </div>
               )}
             </section>
           )}
@@ -806,85 +815,95 @@ export default function Dashboard() {
                 <p className="text-xs text-[#8c909f]">Try adjusting your search query or filter options.</p>
               </div>
             ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 items-start">
-                  {currentDiscoverEvents.map((event) => {
-                    const closingSoon = isRegistrationClosingSoon(event.registration_deadline);
+              <div className="flex flex-col gap-2">
+                <div className="relative flex items-center w-full">
+                  {/* Left Arrow Button */}
+                  {totalDiscoverPages > 1 && (
+                    <button
+                      onClick={() => setCurrentDiscoverPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentDiscoverPage === 1}
+                      className="absolute -left-6 sm:-left-12 z-30 text-white/40 hover:text-white transition-all duration-300 disabled:opacity-10 disabled:cursor-not-allowed cursor-pointer bg-transparent outline-none border-none flex items-center justify-center"
+                      title="Previous Events"
+                    >
+                      <span className="material-symbols-outlined text-4xl sm:text-6xl drop-shadow-xl">chevron_left</span>
+                    </button>
+                  )}
 
-                    return (
-                      <Link key={event.id} to={`/events/${event.id}`} className="relative rounded-2xl overflow-hidden group cursor-pointer aspect-[2/3] shadow-lg border border-white/10 hover:border-blue-500/50 transition-all duration-300 hover:-translate-y-2 bg-[#050810]">
-                        {event.banner_url ? (
-                          <img src={`${API_URL}${event.banner_url}`} alt={event.title} className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700" />
-                        ) : (
-                          <div className="flex items-center justify-center w-full h-full text-[#8c909f] p-4 text-center">{event.title}</div>
-                        )}
-                        
-                        {event.organization_name && (
-                          <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-3 py-1 text-[11px] font-bold rounded-full text-purple-300 border border-purple-500/30 truncate max-w-[80%]">
-                            {event.organization_name}
-                          </div>
-                        )}
+                  {/* Discover Events Grid Container */}
+                  <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 items-start">
+                    {currentDiscoverEvents.map((event) => {
+                      const closingSoon = isRegistrationClosingSoon(event.registration_deadline);
 
-                        {closingSoon && (
-                          <div className="absolute top-3 right-3 bg-red-600/90 backdrop-blur-md px-3 py-1 text-[11px] font-extrabold rounded-full text-white shadow-lg border border-red-400/40">
-                            Registration closes soon
-                          </div>
-                        )}
+                      return (
+                        <Link 
+                          key={event.id} 
+                          to={`/events/${event.id}`} 
+                          onMouseEnter={() => setHoveredDiscEventId(event.id)}
+                          onMouseLeave={() => setHoveredDiscEventId(null)}
+                          className="relative rounded-2xl overflow-hidden group cursor-pointer aspect-[2/3] shadow-lg border border-white/10 hover:border-blue-500/50 transition-all duration-300 hover:-translate-y-2 bg-[#050810]"
+                        >
+                          {event.banner_url ? (
+                            <img src={`${API_URL}${event.banner_url}`} alt={event.title} className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700" />
+                          ) : (
+                            <div className="flex items-center justify-center w-full h-full text-[#8c909f] p-4 text-center">{event.title}</div>
+                          )}
+                          
+                          {event.organization_name && (
+                            <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-3 py-1 text-[11px] font-bold rounded-full text-purple-300 border border-purple-500/30 truncate max-w-[80%]">
+                              {event.organization_name}
+                            </div>
+                          )}
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                          <p className="text-white font-bold truncate w-full text-lg mb-1">{event.title}</p>
-                          <div className="flex items-center justify-between text-xs text-[#8c909f]">
-                            <span className="capitalize">{event.location_type === 'offline' ? event.location : 'Online'}</span>
-                            <span className="text-blue-400 font-semibold">View Details →</span>
+                          {closingSoon && (
+                            <div className="absolute top-3 right-3 bg-red-600/90 backdrop-blur-md px-3 py-1 text-[11px] font-extrabold rounded-full text-white shadow-lg border border-red-400/40">
+                              Registration closes soon
+                            </div>
+                          )}
+
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                            <p className="text-white font-bold truncate w-full text-lg mb-1">{event.title}</p>
+                            <div className="flex items-center justify-between text-xs text-[#8c909f]">
+                              <span className="capitalize">{event.location_type === 'offline' ? event.location : 'Online'}</span>
+                              <span className="text-blue-400 font-semibold">View Details →</span>
+                            </div>
                           </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
+                        </Link>
+                      );
+                    })}
+                  </div>
+
+                  {/* Right Arrow Button */}
+                  {totalDiscoverPages > 1 && (
+                    <button
+                      onClick={() => setCurrentDiscoverPage(prev => Math.min(prev + 1, totalDiscoverPages))}
+                      disabled={currentDiscoverPage === totalDiscoverPages}
+                      className="absolute -right-6 sm:-right-12 z-30 text-white/40 hover:text-white transition-all duration-300 disabled:opacity-10 disabled:cursor-not-allowed cursor-pointer bg-transparent outline-none border-none flex items-center justify-center"
+                      title="Next Events"
+                    >
+                      <span className="material-symbols-outlined text-4xl sm:text-6xl drop-shadow-xl">chevron_right</span>
+                    </button>
+                  )}
                 </div>
 
-                {/* Discover Events Pagination */}
-                {totalDiscoverPages > 1 && (
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 bg-white/5 px-6 py-4 rounded-2xl border border-white/10">
-                    <p className="text-xs text-[#8c909f]">
-                      Showing <span className="font-bold text-white">{indexFirstDiscEvent + 1}</span> to <span className="font-bold text-white">{Math.min(indexLastDiscEvent, filteredAndSortedDiscoverEvents.length)}</span> of <span className="font-bold text-white">{filteredAndSortedDiscoverEvents.length}</span> events
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={() => setCurrentDiscoverPage(prev => Math.max(prev - 1, 1))}
-                        disabled={currentDiscoverPage === 1}
-                        className="p-2 rounded-xl bg-[#1e293b] border border-white/10 text-white hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-                      </button>
-                      
-                      <div className="flex gap-1 overflow-x-auto max-w-[200px] sm:max-w-none no-scrollbar">
-                        {Array.from({ length: totalDiscoverPages }, (_, i) => i + 1).map((page) => (
-                          <button
-                            key={page}
-                            onClick={() => setCurrentDiscoverPage(page)}
-                            className={`min-w-[32px] h-8 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                              currentDiscoverPage === page 
-                                ? 'bg-blue-600 text-white border border-blue-500 shadow-[0_0_10px_rgba(37,99,235,0.4)]' 
-                                : 'bg-transparent text-[#8c909f] hover:text-white hover:bg-white/10 border border-transparent'
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        ))}
-                      </div>
-
-                      <button 
-                        onClick={() => setCurrentDiscoverPage(prev => Math.min(prev + 1, totalDiscoverPages))}
-                        disabled={currentDiscoverPage === totalDiscoverPages}
-                        className="p-2 rounded-xl bg-[#1e293b] border border-white/10 text-white hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                      </button>
-                    </div>
+                {/* Discover Events Pagination Dots (Only for Current Set) */}
+                {currentDiscoverEvents.length > 0 && (
+                  <div className="flex justify-center items-center gap-2 mt-6 flex-wrap px-4">
+                    {currentDiscoverEvents.map((event) => {
+                      const isHovered = hoveredDiscEventId === event.id;
+                      return (
+                        <div
+                          key={event.id}
+                          className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                            isHovered 
+                              ? "bg-white scale-125" 
+                              : "bg-gray-500"
+                          }`}
+                        />
+                      );
+                    })}
                   </div>
                 )}
-              </>
+              </div>
             )}
           </section>
 

@@ -31,6 +31,11 @@ export default function ManageUsers() {
   const [statusFilter, setStatusFilter] = useState("registered");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedParticipant, setSelectedParticipant] = useState(null);
+  const [eventSortBy, setEventSortBy] = useState("date_nearest");
+  const [posterSearchQuery, setPosterSearchQuery] = useState("");
+  const [posterLocationType, setPosterLocationType] = useState("all");
+  const [posterCategory, setPosterCategory] = useState("all");
+  const [posterStatusFilter, setPosterStatusFilter] = useState("all");
 
   // -----------------------------
   // Pagination States (Participants)
@@ -261,10 +266,51 @@ export default function ManageUsers() {
   // -----------------------------
   // Pagination Calculations (Event Posters)
   // -----------------------------
-  const totalEventPages = Math.ceil(events.length / eventsPerPage);
+  const sortedEvents = [...events]
+    .filter(event => {
+      const query = posterSearchQuery.toLowerCase();
+      const titleMatch = event.title?.toLowerCase().includes(query);
+      const orgMatch = event.organization_name?.toLowerCase().includes(query);
+      const locationMatch = event.location?.toLowerCase().includes(query) || (event.location_type === "online" && "online".includes(query));
+      
+      const matchesSearch = !posterSearchQuery || titleMatch || orgMatch || locationMatch;
+      const matchesLocationType = posterLocationType === "all" || event.location_type === posterLocationType;
+      const matchesCategory = posterCategory === "all" || event.category === posterCategory;
+      const matchesStatus = posterStatusFilter === "all" || event.status === posterStatusFilter;
+      
+      return matchesSearch && matchesLocationType && matchesCategory && matchesStatus;
+    })
+    .sort((a, b) => {
+    const getStatusRank = (status) => {
+      switch (status) {
+        case 'active': return 1;
+        case 'scheduled': return 2;
+        case 'draft': return 3;
+        case 'cancelled': return 4;
+        case 'completed': return 5;
+        default: return 6;
+      }
+    };
+    
+    const rankA = getStatusRank(a.status);
+    const rankB = getStatusRank(b.status);
+    
+    if (rankA !== rankB) {
+      return rankA - rankB;
+    }
+
+    if (eventSortBy === "date_nearest") {
+      return new Date(a.date_from || 0) - new Date(b.date_from || 0);
+    } else if (eventSortBy === "date_furthest") {
+      return new Date(b.date_from || 0) - new Date(a.date_from || 0);
+    }
+    return b.id - a.id;
+  });
+
+  const totalEventPages = Math.ceil(sortedEvents.length / eventsPerPage);
   const indexOfLastEvent = currentEventPage * eventsPerPage;
   const indexOfFirstEvent = indexOfLastEvent - eventsPerPage;
-  const currentEvents = events.slice(indexOfFirstEvent, indexOfLastEvent);
+  const currentEvents = sortedEvents.slice(indexOfFirstEvent, indexOfLastEvent);
 
   useEffect(() => {
     if (currentEventPage > totalEventPages && totalEventPages > 0) {
@@ -386,10 +432,62 @@ export default function ManageUsers() {
             
             {!selectedEvent ? (
               <>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h1 className="text-3xl font-extrabold text-white" style={{ fontFamily: "'Manrope', sans-serif" }}>Select an Event Poster</h1>
-                    <p className="text-[#8c909f] text-sm mt-1">Click on any event poster below to view active registrations and cancelled candidate histories.</p>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                  <div className="w-full md:w-80 relative group">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#8c909f] group-focus-within:text-red-500 transition-colors">search</span>
+                    <input 
+                      type="text" 
+                      placeholder="Search title, college, location..." 
+                      value={posterSearchQuery}
+                      onChange={(e) => { setPosterSearchQuery(e.target.value); setCurrentEventPage(1); }}
+                      className="w-full bg-[#1e293b]/50 border border-white/10 text-white pl-12 pr-4 py-3 rounded-xl focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition-all outline-none"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <select 
+                      value={posterLocationType}
+                      onChange={(e) => { setPosterLocationType(e.target.value); setCurrentEventPage(1); }}
+                      className="bg-[#1e293b] border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm outline-none focus:border-red-500 transition-all cursor-pointer appearance-none"
+                    >
+                      <option value="all">All Locations</option>
+                      <option value="offline">Offline</option>
+                      <option value="online">Online</option>
+                    </select>
+
+                    <select 
+                      value={posterCategory}
+                      onChange={(e) => { setPosterCategory(e.target.value); setCurrentEventPage(1); }}
+                      className="bg-[#1e293b] border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm outline-none focus:border-red-500 transition-all cursor-pointer appearance-none"
+                    >
+                      <option value="all">All Categories</option>
+                      <option value="workshop">Workshop</option>
+                      <option value="hackathon">Hackathon</option>
+                      <option value="job fair">Job Fair</option>
+                      <option value="internship">Internship</option>
+                      <option value="seminar">Seminar</option>
+                      <option value="others">Others</option>
+                    </select>
+
+                    <select 
+                      value={posterStatusFilter}
+                      onChange={(e) => { setPosterStatusFilter(e.target.value); setCurrentEventPage(1); }}
+                      className="bg-[#1e293b] border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm outline-none focus:border-red-500 transition-all cursor-pointer appearance-none"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="active">Active</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="completed">Completed</option>
+                    </select>
+
+                    <select 
+                      value={eventSortBy}
+                      onChange={(e) => { setEventSortBy(e.target.value); setCurrentEventPage(1); }}
+                      className="bg-[#1e293b] border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm outline-none focus:border-red-500 transition-all cursor-pointer appearance-none"
+                    >
+                      <option value="date_nearest">Sort by: Nearest Date</option>
+                      <option value="date_furthest">Sort by: Furthest Date</option>
+                    </select>
                   </div>
                 </div>
 
@@ -404,6 +502,9 @@ export default function ManageUsers() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 items-start">
                       {currentEvents.map((event) => {
                         const count = getParticipantCountForEvent(event.id, event.title);
+                        const isCancelled = event.status === 'cancelled';
+                        const isCompleted = event.status === 'completed';
+
                         return (
                           <div 
                             key={event.id} 
@@ -411,26 +512,38 @@ export default function ManageUsers() {
                             className="relative rounded-2xl overflow-hidden group cursor-pointer aspect-[2/3] shadow-lg border border-white/10 hover:border-red-500/50 transition-all duration-300 hover:-translate-y-2 bg-[#050810]"
                           >
                             {event.banner_url ? (
-                              <img src={`${API_URL}${event.banner_url}`} alt={event.title} className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700" />
+                              <img src={`${API_URL}${event.banner_url}`} alt={event.title} className={`w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ${isCancelled || isCompleted ? 'grayscale opacity-60' : ''}`} />
                             ) : (
                               <div className="flex items-center justify-center w-full h-full text-[#8c909f] p-4 text-center">{event.title} <br/>(No Image)</div>
                             )}
                             
-                            <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-3 py-1 text-xs font-bold rounded-full text-white shadow-lg border border-white/10 flex items-center gap-1.5">
+                            <div className="absolute top-3 left-3 z-20 bg-black/70 backdrop-blur-md px-3 py-1 text-xs font-bold rounded-full text-white shadow-lg border border-white/10 flex items-center gap-1.5">
                               <span className="material-symbols-outlined text-red-400 text-[14px]">group</span>
                               <span>{count} Registered</span>
                             </div>
 
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                              <p className="text-white font-bold truncate w-full text-lg mb-1">{event.title}</p>
-                              <span className="text-xs text-red-400 font-semibold">Click to view participants & cancellations →</span>
-                            </div>
+                            {isCancelled && (
+                              <div className="absolute top-3 right-3 z-20 bg-red-700 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase shadow-md">
+                                Cancelled
+                              </div>
+                            )}
+                            
+                            {isCompleted && (
+                              <div className="absolute top-3 right-3 z-20 bg-gray-700 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase shadow-md">
+                                Completed
+                              </div>
+                            )}
 
-                            {event.category && (
-                              <div className="absolute top-3 right-3 bg-red-600/90 backdrop-blur-md px-2 py-1 text-[10px] uppercase tracking-wider font-bold rounded-md text-white shadow-lg border border-red-400/30">
+                            {!isCancelled && !isCompleted && event.category && (
+                              <div className="absolute top-3 right-3 z-20 bg-red-600/90 backdrop-blur-md px-2 py-1 text-[10px] uppercase tracking-wider font-bold rounded-md text-white shadow-lg border border-red-400/30">
                                 {event.category}
                               </div>
                             )}
+
+                            <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                              <p className="text-white font-bold truncate w-full text-lg mb-1">{event.title}</p>
+                              <span className="text-xs text-red-400 font-semibold">Click to view participants & cancellations →</span>
+                            </div>
                           </div>
                         );
                       })}
